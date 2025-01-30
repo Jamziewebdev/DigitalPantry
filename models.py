@@ -16,7 +16,6 @@ class Category(Base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String, unique=True, nullable=False)
-
     items = relationship('Item', secondary=item_category_association, back_populates='categories')
 
 
@@ -27,7 +26,6 @@ class Item(Base):
     name = Column(String, nullable=False)
     quantity = Column(Float, nullable=False)
     unit = Column(String, nullable=False)
-
     categories = relationship('Category', secondary=item_category_association, back_populates='items')
 
 

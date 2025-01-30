@@ -1,18 +1,20 @@
-from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QLineEdit, QComboBox, QCheckBox,
-    QPushButton, QLabel, QHBoxLayout, QMessageBox
-)
-from database import add_item
-
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLineEdit, QComboBox, QCheckBox,QPushButton, QLabel, QHBoxLayout, QMessageBox
+from database import add_item, update_item, get_item_by_id
 
 class AddItemWindow(QWidget):
-    def __init__(self, parent):
+    def __init__(self, parent, edit_mode=False, item_id=None):
         super().__init__()
         self.parent = parent
-        self.setWindowTitle("Add New Item")
+        self.edit_mode = edit_mode
+        self.item_id = item_id
+        self.setWindowTitle("Edit Item" if edit_mode else "Add New Item")
         self.init_ui()
 
+        if edit_mode:
+            self.load_item_data()
+
     def init_ui(self):
+        # Initializing the UI
         layout = QVBoxLayout()
 
         # Name input
@@ -39,36 +41,54 @@ class AddItemWindow(QWidget):
         category_layout = QHBoxLayout()
         self.category_checkboxes = []
         for cat in self.categories:
-            checkbox = QCheckBox(cat, self)
-            self.category_checkboxes.append(checkbox)
-            category_layout.addWidget(checkbox)
+            category_checkbox = QCheckBox(cat, self)
+            self.category_checkboxes.append(category_checkbox)
+            category_layout.addWidget(category_checkbox)
         layout.addLayout(category_layout)
 
-        # Add button to submit item
-        self.add_button = QPushButton("Add Item", self)
-        self.add_button.clicked.connect(self.add_item)
+        # Save button to submit item
+        self.add_button = QPushButton("Save Item", self)
+        self.add_button.clicked.connect(self.save_item)
         layout.addWidget(self.add_button)
 
         self.setLayout(layout)
 
-    def add_item(self):
+    def load_item_data(self):
+        item = get_item_by_id(self.item_id)
+        if item is not None:
+            self.name_input.setText(item.name)
+            self.quantity_input.setText(str(item.quantity))
+            self.unit_dropdown.setCurrentText(item.unit)
+            for checkbox in self.category_checkboxes:
+                if checkbox.text() in [cat.name for cat in item.categories]:
+                    checkbox.setChecked(True)
+        else:
+            QMessageBox.warning(self, "Error", "Could not load item!")
+
+    def save_item(self):
         try:
+            # Getting input values
             name = self.name_input.text().strip()
             quantity = float(self.quantity_input.text())
             unit = self.unit_dropdown.currentText()
             selected_categories = [cb.text() for cb in self.category_checkboxes if cb.isChecked()]
 
-            if not name or quantity <= 0:
-                raise ValueError("Name cannot be empty and quantity must be greater than zero.")
+            # Validate input
+            if not name:
+                raise ValueError("Name must not be empty.")
+            if quantity <= 0:
+                raise ValueError("Quantity must be greater than zero.")
 
-            # Add to DB
-            add_item(name, quantity, unit, selected_categories)
-
-            # Refresh parent table and close window
+            # Add or update item in DB
+            if self.edit_mode:
+                update_item(self.item_id, name, quantity, unit, selected_categories)
+                QMessageBox.information(self, "Success", "Item updated successfully!")
+            else:
+                add_item(name, quantity, unit, selected_categories)
+                QMessageBox.information(self, "Success", "Item added successfully!")
             self.parent.view_items()
-            QMessageBox.information(self, "Success", "Item added successfully!")
             self.close()
-        except ValueError as e:
-            QMessageBox.warning(self, "Input Error", str(e))
+        except ValueError as ve:
+            QMessageBox.warning(self, "Input Error", str(ve))
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"An error occurred: {e}")
+            QMessageBox.critical(self, "Error", f"An unexpected error occurred: {e}")
