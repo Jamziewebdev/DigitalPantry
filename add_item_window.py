@@ -7,6 +7,7 @@ class AddItemWindow(QWidget):
         self.parent = parent
         self.edit_mode = edit_mode
         self.item_id = item_id
+        # Dynamic window title
         self.setWindowTitle("Edit Item" if edit_mode else "Add New Item")
         self.init_ui()
 
